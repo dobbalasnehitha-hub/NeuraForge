@@ -1,8 +1,8 @@
-
 import os
-import requests
 import streamlit as st
 from dotenv import load_dotenv
+from google import genai
+from google.genai import types
 
 
 # ============================================================
@@ -11,19 +11,16 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-OLLAMA_HOST = os.getenv(
-    "OLLAMA_HOST",
-    "http://localhost:11434"
-)
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-DEFAULT_MODEL = os.getenv(
-    "OLLAMA_MODEL",
-    "llama3.2"
+GEMINI_MODEL = os.getenv(
+    "GEMINI_MODEL",
+    "gemini-3.5-flash-lite"
 )
 
 
 # ============================================================
-# PAGE CONFIGURATION
+# PAGE CONFIG
 # ============================================================
 
 st.set_page_config(
@@ -35,7 +32,49 @@ st.set_page_config(
 
 
 # ============================================================
-# CUSTOM CSS
+# CHECK API KEY
+# ============================================================
+
+if not GEMINI_API_KEY:
+
+    st.error(
+        """
+        ❌ GEMINI_API_KEY not found.
+
+        Create a `.env` file in your project folder:
+
+        GEMINI_API_KEY=YOUR_API_KEY
+        GEMINI_MODEL=gemini-3.5-flash-lite
+        """
+    )
+
+    st.stop()
+
+
+# ============================================================
+# GEMINI CLIENT
+# ============================================================
+
+try:
+
+    client = genai.Client(
+        api_key=GEMINI_API_KEY,
+        http_options=types.HttpOptions(
+            timeout=30000
+        )
+    )
+
+except Exception as e:
+
+    st.error(
+        f"❌ Could not initialize Gemini:\n\n{e}"
+    )
+
+    st.stop()
+
+
+# ============================================================
+# PAGE STYLE
 # ============================================================
 
 st.markdown(
@@ -46,26 +85,27 @@ st.markdown(
         font-size: 48px;
         font-weight: 800;
         text-align: center;
-        margin-bottom: 5px;
+        margin-top: 10px;
     }
 
     .subtitle {
         text-align: center;
         font-size: 18px;
-        color: #777777;
-        margin-bottom: 35px;
+        margin-bottom: 30px;
     }
 
     .section-title {
         font-size: 25px;
         font-weight: 700;
+        margin-top: 20px;
+        margin-bottom: 15px;
     }
 
-    .stButton > button {
-        width: 100%;
-        font-weight: 600;
-        border-radius: 10px;
-        padding: 10px;
+    .footer {
+        text-align: center;
+        margin-top: 50px;
+        padding: 20px;
+        font-size: 14px;
     }
 
     </style>
@@ -84,9 +124,11 @@ st.markdown(
 )
 
 st.markdown(
-    '<div class="subtitle">'
-    'Transform your raw project idea into a complete AI-powered project blueprint'
-    '</div>',
+    """
+    <div class="subtitle">
+    Transform your ideas into complete AI-powered project blueprints
+    </div>
+    """,
     unsafe_allow_html=True
 )
 
@@ -97,35 +139,36 @@ st.markdown(
 
 with st.sidebar:
 
-    st.header("⚙️ NeuraForge Settings")
+    st.header("⚙️ Project Configuration")
 
-    model = st.text_input(
-        "Ollama Model",
-        value=DEFAULT_MODEL
+    selected_model = st.selectbox(
+        "🤖 Gemini Model",
+        [
+            "gemini-3.5-flash-lite"
+        ]
     )
 
-    st.divider()
-
-    st.subheader("🎯 Project Settings")
-
     domain = st.selectbox(
-        "Project Domain",
+        "🌐 Project Domain",
         [
             "Artificial Intelligence",
             "Machine Learning",
             "Generative AI",
-            "Web Development",
+            "Computer Vision",
+            "Natural Language Processing",
             "Data Science",
             "Cybersecurity",
             "Healthcare",
             "Education",
+            "Finance",
+            "Agriculture",
             "Environment",
             "Other"
         ]
     )
 
     difficulty = st.selectbox(
-        "Project Difficulty",
+        "📊 Difficulty Level",
         [
             "Beginner",
             "Intermediate",
@@ -133,106 +176,354 @@ with st.sidebar:
         ]
     )
 
-    st.divider()
+    st.markdown("---")
 
     st.info(
-        "NeuraForge AI uses a local Ollama model. "
-        "Your project idea is processed locally."
+        """
+        **NeuraForge AI**
+
+        Generate:
+
+        • Project Overview
+        • Problem Statement
+        • Objectives
+        • Features
+        • Technology Stack
+        • AI/ML Component
+        • Architecture
+        • Database
+        • APIs
+        • Folder Structure
+        • Roadmap
+        • Testing
+        • Future Enhancements
+        • Resume Description
+        """
     )
 
 
 # ============================================================
-# PROJECT IDEA INPUT
+# PROJECT IDEA
 # ============================================================
 
 st.markdown(
-    '<div class="section-title">🚀 Describe Your Project Idea</div>',
+    '<div class="section-title">'
+    '💡 Describe Your Project Idea'
+    '</div>',
     unsafe_allow_html=True
-)
-
-st.write(
-    "Enter a simple idea. NeuraForge will transform it into "
-    "a structured project blueprint."
 )
 
 project_idea = st.text_area(
     "Project Idea",
     placeholder=(
-        "Example: I want to build an AI system that predicts "
-        "flood risk using rainfall and river data."
+        "Example:\n"
+        "I want to build an AI-based system that detects "
+        "online scams and phishing messages."
     ),
-    height=160
+    height=180
 )
 
 
 # ============================================================
-# ADDITIONAL REQUIREMENTS
+# ADDITIONAL DETAILS
 # ============================================================
 
-st.markdown("### 🛠️ Additional Requirements")
-
 col1, col2 = st.columns(2)
+
 
 with col1:
 
     preferred_technologies = st.text_input(
-        "Preferred Technologies",
-        placeholder="Example: Python, Streamlit, FastAPI"
+        "🛠️ Preferred Technologies",
+        placeholder="Example: Python, Streamlit, MongoDB"
     )
+
 
 with col2:
 
     target_users = st.text_input(
-        "Target Users",
-        placeholder="Example: Students, researchers, farmers"
+        "👥 Target Users",
+        placeholder="Example: Students, organizations"
     )
+
+
+# ============================================================
+# CREATE PROMPT
+# ============================================================
+
+def create_project_prompt():
+
+    technologies = (
+        preferred_technologies.strip()
+        if preferred_technologies.strip()
+        else "Choose suitable modern technologies."
+    )
+
+    users = (
+        target_users.strip()
+        if target_users.strip()
+        else "Identify suitable target users."
+    )
+
+    return f"""
+You are NeuraForge AI, an expert AI project architect.
+
+Create a practical and implementable project blueprint.
+
+PROJECT IDEA:
+{project_idea}
+
+DOMAIN:
+{domain}
+
+DIFFICULTY:
+{difficulty}
+
+PREFERRED TECHNOLOGIES:
+{technologies}
+
+TARGET USERS:
+{users}
+
+
+Generate these sections:
+
+# 1. Project Title
+
+# 2. Project Overview
+
+# 3. Problem Statement
+
+# 4. Objectives
+
+# 5. Target Users
+
+# 6. Key Features
+
+# 7. Technology Stack
+
+Include:
+- Frontend
+- Backend
+- AI/ML
+- Database
+- APIs
+- Deployment
+
+# 8. AI/ML Component
+
+Explain the AI model, input,
+processing and output.
+
+# 9. System Architecture
+
+Explain:
+
+User
+↓
+Frontend
+↓
+Backend
+↓
+AI/ML
+↓
+Database
+↓
+Response
+
+# 10. Database Design
+
+Provide tables/collections
+and important fields.
+
+# 11. API Design
+
+Provide important API endpoints
+with HTTP methods and purposes.
+
+# 12. Project Folder Structure
+
+Provide a professional folder structure.
+
+# 13. Development Roadmap
+
+Give a step-by-step development plan.
+
+# 14. Possible Challenges
+
+List challenges and solutions.
+
+# 15. Testing Strategy
+
+Include unit, integration,
+API, UI and security testing.
+
+# 16. Future Enhancements
+
+Give at least 6 useful enhancements.
+
+# 17. Resume Description
+
+Give:
+- 2-3 line resume description
+- 3-5 ATS-friendly bullet points
+
+IMPORTANT:
+
+Make the project realistic for a student.
+
+Use Markdown.
+
+Keep the explanation detailed but concise.
+
+Avoid unnecessary repetition.
+"""
+
+
+# ============================================================
+# GEMINI GENERATION
+# ============================================================
+
+def generate_with_gemini(prompt, model):
+
+    try:
+
+        response = client.models.generate_content(
+            model=model,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                thinking_config=types.ThinkingConfig(
+                    thinking_level="low"
+                ),
+                temperature=0.7
+            )
+        )
+
+        if response.text:
+
+            return response.text
+
+        return None
+
+
+    except Exception as e:
+
+        error = str(e)
+
+
+        # ----------------------------------------------------
+        # TIMEOUT
+        # ----------------------------------------------------
+
+        if (
+            "timeout" in error.lower()
+            or "timed out" in error.lower()
+        ):
+
+            st.error(
+                """
+                ⏱️ Gemini took too long to respond.
+
+                Please try again with a shorter project idea.
+                """
+            )
+
+            return None
+
+
+        # ----------------------------------------------------
+        # 503
+        # ----------------------------------------------------
+
+        if (
+            "503" in error
+            or "UNAVAILABLE" in error
+            or "high demand" in error.lower()
+        ):
+
+            st.error(
+                """
+                ⚠️ Gemini is currently experiencing
+                high demand.
+
+                Please wait a little and try again.
+                """
+            )
+
+            return None
+
+
+        # ----------------------------------------------------
+        # 429
+        # ----------------------------------------------------
+
+        if (
+            "429" in error
+            or "RESOURCE_EXHAUSTED" in error
+        ):
+
+            st.error(
+                """
+                ⚠️ Gemini API rate limit reached.
+
+                Please wait and try again.
+                """
+            )
+
+            return None
+
+
+        # ----------------------------------------------------
+        # AUTHENTICATION
+        # ----------------------------------------------------
+
+        if (
+            "401" in error
+            or "403" in error
+            or "API key" in error
+        ):
+
+            st.error(
+                """
+                ❌ Gemini authentication failed.
+
+                Check your GEMINI_API_KEY in `.env`.
+                """
+            )
+
+            return None
+
+
+        # ----------------------------------------------------
+        # OTHER ERROR
+        # ----------------------------------------------------
+
+        st.error(
+            f"""
+            ❌ Gemini Error:
+
+            {error}
+            """
+        )
+
+        return None
 
 
 # ============================================================
 # GENERATE BUTTON
 # ============================================================
 
-st.markdown("")
+st.markdown("---")
 
 generate_button = st.button(
-    "✨ Generate Project Blueprint"
+    "🚀 Generate Project Blueprint",
+    type="primary",
+    use_container_width=True
 )
 
 
 # ============================================================
-# OLLAMA FUNCTION
-# ============================================================
-
-def generate_with_ollama(prompt, selected_model):
-
-    url = f"{OLLAMA_HOST}/api/chat"
-
-    payload = {
-        "model": selected_model,
-        "messages": [
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ],
-        "stream": False
-    }
-
-    response = requests.post(
-        url,
-        json=payload,
-        timeout=180
-    )
-
-    response.raise_for_status()
-
-    data = response.json()
-
-    return data["message"]["content"]
-
-
-# ============================================================
-# GENERATE BLUEPRINT
+# GENERATE
 # ============================================================
 
 if generate_button:
@@ -245,242 +536,76 @@ if generate_button:
 
     else:
 
-        prompt = f"""
-You are NeuraForge AI, an expert AI project architect,
-software engineer, and technical mentor.
-
-Your job is to transform a student's raw project idea
-into a practical and technically strong project blueprint.
-
-PROJECT IDEA:
-{project_idea}
-
-PROJECT DOMAIN:
-{domain}
-
-PROJECT DIFFICULTY:
-{difficulty}
-
-PREFERRED TECHNOLOGIES:
-{preferred_technologies if preferred_technologies else "Choose suitable technologies."}
-
-TARGET USERS:
-{target_users if target_users else "Determine suitable target users."}
-
-Generate the project blueprint using the following structure.
-
-# 1. PROJECT TITLE
-
-Give a professional and unique project title.
-
-# 2. PROJECT OVERVIEW
-
-Explain the project clearly in simple but professional language.
-
-# 3. PROBLEM STATEMENT
-
-Explain the real-world problem being solved.
-
-# 4. OBJECTIVES
-
-Give 5 to 8 clear objectives.
-
-# 5. TARGET USERS
-
-Explain who will use the system.
-
-# 6. KEY FEATURES
-
-Give the major features of the application.
-
-# 7. TECHNOLOGY STACK
-
-Recommend:
-- Frontend
-- Backend
-- Database
-- AI/ML
-- APIs
-- Deployment
-- Other required technologies
-
-# 8. AI/ML COMPONENT
-
-Explain:
-- Which AI model or approach should be used
-- Why it is suitable
-- Input
-- Processing
-- Output
-
-# 9. SYSTEM ARCHITECTURE
-
-Explain the complete flow:
-
-User
-→ Frontend
-→ Backend
-→ AI/ML
-→ Database
-→ Response
-
-Give a detailed architecture explanation.
-
-# 10. DATABASE DESIGN
-
-Suggest the required database tables/collections
-and important fields.
-
-# 11. API DESIGN
-
-Suggest important API endpoints if APIs are required.
-
-# 12. PROJECT FOLDER STRUCTURE
-
-Provide a clean and realistic folder structure.
-
-# 13. DEVELOPMENT ROADMAP
-
-Divide development into practical phases.
-
-Example:
-
-Phase 1 - Setup
-Phase 2 - Backend
-Phase 3 - AI
-Phase 4 - Database
-Phase 5 - Frontend
-Phase 6 - Testing
-Phase 7 - Deployment
-
-# 14. POSSIBLE CHALLENGES
-
-List technical challenges and how to solve them.
-
-# 15. TESTING STRATEGY
-
-Explain how the application should be tested.
-
-# 16. FUTURE ENHANCEMENTS
-
-Give 5 to 8 realistic future improvements.
-
-# 17. RESUME DESCRIPTION
-
-Write 3 strong resume bullet points describing this project.
-
-IMPORTANT:
-
-Make the project realistic for a college student.
-
-Avoid unnecessarily complex technologies.
-
-Prefer open-source and locally runnable technologies where possible.
-
-Give practical implementation suggestions rather than generic statements.
-"""
-
-        # ====================================================
-        # AI GENERATION
-        # ====================================================
+        prompt = create_project_prompt()
 
         with st.spinner(
-            "🧠 NeuraForge is designing your project..."
+            "🧠 NeuraForge AI is generating your blueprint..."
         ):
 
-            try:
+            blueprint = generate_with_gemini(
+                prompt,
+                selected_model
+            )
 
-                result = generate_with_ollama(
-                    prompt,
-                    model
-                )
 
-                st.success(
-                    "✅ Project blueprint generated successfully!"
-                )
+        if blueprint:
 
-                # ============================================
-                # RESULTS
-                # ============================================
+            st.session_state["blueprint"] = blueprint
 
-                st.markdown("---")
+            st.success(
+                "✅ Project blueprint generated successfully!"
+            )
 
-                st.markdown(
-                    "## 📋 Your Project Blueprint"
-                )
 
-                st.markdown(result)
+# ============================================================
+# DISPLAY RESULT
+# ============================================================
 
-                # ============================================
-                # DOWNLOAD
-                # ============================================
+if "blueprint" in st.session_state:
 
-                st.markdown("---")
+    st.markdown("---")
 
-                st.download_button(
-                    label="📥 Download Blueprint",
-                    data=result,
-                    file_name="neuraforge_project_blueprint.txt",
-                    mime="text/plain"
-                )
+    st.markdown(
+        '<div class="section-title">'
+        '📋 Generated Project Blueprint'
+        '</div>',
+        unsafe_allow_html=True
+    )
 
-            except requests.exceptions.ConnectionError:
+    blueprint = st.session_state["blueprint"]
 
-                st.error(
-                    "❌ Could not connect to Ollama."
-                )
+    st.markdown(blueprint)
 
-                st.info(
-                    "Make sure Ollama is installed and running."
-                )
+    st.markdown("---")
 
-                st.code(
-                    "ollama list"
-                )
-
-            except requests.exceptions.Timeout:
-
-                st.error(
-                    "⏱️ Ollama took too long to respond."
-                )
-
-                st.info(
-                    "Try a smaller/faster model or wait a little longer."
-                )
-
-            except requests.exceptions.HTTPError as error:
-
-                st.error(
-                    "❌ Ollama returned an HTTP error."
-                )
-
-                st.code(
-                    str(error)
-                )
-
-            except KeyError:
-
-                st.error(
-                    "❌ Unexpected response received from Ollama."
-                )
-
-            except Exception as error:
-
-                st.error(
-                    "❌ Something went wrong."
-                )
-
-                st.code(
-                    str(error)
-                )
+    st.download_button(
+        "📥 Download Project Blueprint",
+        data=blueprint,
+        file_name="NeuraForge_Project_Blueprint.txt",
+        mime="text/plain",
+        use_container_width=True
+    )
 
 
 # ============================================================
 # FOOTER
 # ============================================================
 
-st.markdown("---")
+st.markdown(
+    """
+    <div class="footer">
 
-st.caption(
-    "NeuraForge AI • AI-Powered Project Architecture Platform"
+    🧠 <b>NeuraForge AI</b>
+
+    <br><br>
+
+    AI-Powered Project Blueprint Generator
+
+    <br><br>
+
+    Built with ❤️ using Streamlit + Google Gemini
+
+    </div>
+    """,
+    unsafe_allow_html=True
 )
